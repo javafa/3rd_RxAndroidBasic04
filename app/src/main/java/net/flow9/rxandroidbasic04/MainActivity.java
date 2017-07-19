@@ -16,6 +16,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import io.reactivex.Observable;
+import io.reactivex.Scheduler;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -34,26 +37,50 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         emitData();
     }
-    Observable<String> observable;
+    Observable<Integer> observable;
+    String[] months;
     public void emitData(){
         // 1월~ 12월까지 텍스트를 추출
         DateFormatSymbols dfs = new DateFormatSymbols();
-        String[] months = dfs.getMonths();
+        months = dfs.getMonths();
         // 초당 1개씩 데이터 발행
         observable = Observable.create(emitter -> {
-            for(String month : months){
-                emitter.onNext(month);
+            for(int i=0 ; i<12 ; i++){
+                emitter.onNext(i);
                 Thread.sleep(1000);
             }
             emitter.onComplete();
         });
     }
     public void doMap(View view) {
-
+        observable
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .filter( item -> item.equals("May")?false:true)
+                .map( item -> ">> "+item+"")
+                .subscribe(
+                item -> {
+                    data.add(item);
+                    adapter.notifyItemInserted(data.size()-1);
+                },
+                error -> Log.e("Error",error.getMessage()),
+                () -> Log.i("Complete","Successfully completed!")
+        );
     }
 
     public void doFlatmap(View view) {
-
+        observable
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .flatMap(item -> Observable.fromArray(new String[]{"name:"+months[item], "code:"+item}))
+                .subscribe(
+                        item -> {
+                            data.add(item);
+                            adapter.notifyItemInserted(data.size()-1);
+                        },
+                        error -> Log.e("Error",error.getMessage()),
+                        () -> Log.i("Complete","Successfully completed!")
+                );
     }
 
     public void doZip(View view) {
